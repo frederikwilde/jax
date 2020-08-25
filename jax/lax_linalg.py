@@ -905,26 +905,27 @@ def svd_jvp_rule(primals, tangents, full_matrices, compute_uv):
 
   k = s.shape[-1]
   Ut, V = _H(U), _H(Vt)
-  s_dim = s[..., None, :]
-  dS = jnp.matmul(jnp.matmul(Ut, dA), V)
-  ds = jnp.real(jnp.diagonal(dS, 0, -2, -1))
+  s_dim = s[..., None, :]  # to allow multiplication with diagonal matrices
+  dS = jnp.matmul(jnp.matmul(Ut, dA), V)  # called dP in SVD paper.
+  ds = jnp.real(jnp.diagonal(.5 * (dS + _H(dS)), 0, -2, -1))
 
   if not compute_uv:
     return (s,), (ds,)
 
   F = 1 / (jnp.square(s_dim) - jnp.square(_T(s_dim)) + jnp.eye(k, dtype=A.dtype))
   F = F - jnp.eye(k, dtype=A.dtype)
-  dSS = s_dim * dS
-  SdS = _T(s_dim) * dS
-  dU = jnp.matmul(U, F * (dSS + _T(dSS)))
-  dV = jnp.matmul(V, F * (SdS + _T(SdS)))
+  dSS = s_dim * dS  # dS.dot(jnp.diag(s))
+  SdS = _T(s_dim) * dS  # jnp.diag(s).dot(dS)
+  dU = jnp.matmul(U, F * (dSS + _H(SdS)))
+  dV = jnp.matmul(V, F * (SdS + _H(dSS)))
 
   m, n = A.shape[-2:]
-  if m > n:
-    dU = dU + jnp.matmul(jnp.eye(m, dtype=A.dtype) - jnp.matmul(U, Ut), jnp.matmul(dA, V)) / s_dim
-  if n > m:
-    dV = dV + jnp.matmul(jnp.eye(n, dtype=A.dtype) - jnp.matmul(V, Vt), jnp.matmul(_H(dA), U)) / s_dim
-  return (s, U, Vt), (ds, dU, _T(dV))
+  if m != n:
+    # TODO: There is code in the real-numbers implementation, which might work correctly for the complex case as well.
+    raise NotImplementedError(
+      'Complex SVD JVP is only implemented for square matrices')
+
+  return (s, U, Vt), (ds, dU, _H(dV))
 
 def _svd_cpu_gpu_translation_rule(gesvd_impl, c, operand, full_matrices, compute_uv):
 
