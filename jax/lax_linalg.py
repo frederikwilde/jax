@@ -903,7 +903,6 @@ def svd_jvp_rule(primals, tangents, full_matrices, compute_uv):
     raise NotImplementedError(
       "Singular value decomposition JVP not implemented for full matrices")
 
-  k = s.shape[-1]
   Ut, V = _H(U), _H(Vt)
   s_dim = s[..., None, :]  # to allow multiplication with diagonal matrices
   dS = jnp.matmul(jnp.matmul(Ut, dA), V)  # called dP in SVD paper.
@@ -913,7 +912,7 @@ def svd_jvp_rule(primals, tangents, full_matrices, compute_uv):
     return (s,), (ds,)
 
   s_diffs = jnp.square(s_dim) - jnp.square(_T(s_dim))
-  s_diffs_zeros = A.dtype(1.) * (s_diffs == 0.)  # is 1. where s_diffs is 0. and is 0. everywhere else
+  s_diffs_zeros = np.ones((), dtype=A.dtype) * (s_diffs == 0.)  # is 1. where s_diffs is 0. and is 0. everywhere else
   F = 1 / (s_diffs + s_diffs_zeros)
   F = F - s_diffs_zeros
   dSS = s_dim * dS  # dS.dot(jnp.diag(s))
