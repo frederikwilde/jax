@@ -919,7 +919,7 @@ def svd_jvp_rule(primals, tangents, full_matrices, compute_uv):
   s_zeros = jnp.ones((), dtype=A.dtype) * (s == 0.)
   s_inv = 1 / (s + s_zeros) - s_zeros
   s_inv_mat = jnp.vectorize(jnp.diag, signature='(k)->(k,k)')(
-    s_inv.reshape(jnp.prod(jnp.array(s.shape[:-1])), s.shape[-1])
+    s_inv.reshape(jnp.prod(jnp.array(s.shape[:-1]), dtype=int), s.shape[-1])
   ).reshape(*s.shape, s.shape[-1])
   dUdV_diag = .5 * (dS - _H(dS)) * s_inv_mat
   dU = jnp.matmul(U, F * (dSS + _H(dSS)) + dUdV_diag)
