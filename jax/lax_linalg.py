@@ -911,12 +911,18 @@ def svd_jvp_rule(primals, tangents, full_matrices, compute_uv):
     return (s,), (ds,)
 
   s_diffs = jnp.square(s_dim) - jnp.square(_T(s_dim))
-  s_diffs_zeros = np.ones((), dtype=A.dtype) * (s_diffs == 0.)  # is 1. where s_diffs is 0. and is 0. everywhere else
-  F = 1 / (s_diffs + s_diffs_zeros)
-  F = F - s_diffs_zeros
+  s_diffs_zeros = jnp.ones((), dtype=A.dtype) * (s_diffs == 0.)  # is 1. where s_diffs is 0. and is 0. everywhere else
+  F = 1 / (s_diffs + s_diffs_zeros) - s_diffs_zeros
   dSS = s_dim * dS  # dS.dot(jnp.diag(s))
   SdS = _T(s_dim) * dS  # jnp.diag(s).dot(dS)
-  dU = jnp.matmul(U, F * (dSS + _H(dSS)))
+
+  s_zeros = jnp.ones((), dtype=A.dtype) * (s == 0.)
+  s_inv = 1 / (s + s_zeros) - s_zeros
+  s_inv_mat = jnp.vectorize(jnp.diag, signature='(k)->(k,k)')(
+    s_inv.reshape(jnp.prod(jnp.array(s.shape[:-1])), s.shape[-1])
+  ).reshape(*s.shape, s.shape[-1])
+  dUdV_diag = .5 * (dS - _H(dS)) * s_inv_mat
+  dU = jnp.matmul(U, F * (dSS + _H(dSS)) + dUdV_diag)
   dV = jnp.matmul(V, F * (SdS + _H(SdS)))
 
   m, n = A.shape[-2:]
