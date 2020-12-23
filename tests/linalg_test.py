@@ -560,11 +560,30 @@ class NumpyLinalgTest(jtu.JaxTestCase):
 
     self._CompileAndCheck(partial(jnp.linalg.svd, full_matrices=full_matrices, compute_uv=compute_uv),
                           args_maker)
-    if not (compute_uv and full_matrices):
+    if not compute_uv:
       svd = partial(jnp.linalg.svd, full_matrices=full_matrices,
                     compute_uv=compute_uv)
       # TODO(phawkins): these tolerances seem very loose.
-      jtu.check_jvp(svd, partial(jvp, svd), (a,), rtol=5e-2, atol=2e-1)
+      if dtype == np.complex128:
+        jtu.check_jvp(svd, partial(jvp, svd), (a,), rtol=1e-4, atol=1e-4, eps=1e-8)
+      else:
+        jtu.check_jvp(svd, partial(jvp, svd), (a,), rtol=5e-2, atol=2e-1)
+
+    if compute_uv and (not full_matrices):
+      b, = args_maker()
+      def f(x):
+        u, s, v = jnp.linalg.svd(
+          a + x * b,
+          full_matrices=full_matrices,
+          compute_uv=compute_uv)
+        vdiag = jnp.vectorize(jnp.diag, signature='(k)->(k,k)')
+        return jnp.matmul(jnp.matmul(u, vdiag(s)), v).real
+      _, t_out = jvp(f, (1.,), (1.,))
+      if dtype == np.complex128:
+          tol = 1e-13
+      else:
+          tol = 5e-4
+      self.assertTrue(np.all(np.linalg.norm(t_out - b.real, axis=(-2, -1)) < tol))
 
   @parameterized.named_parameters(jtu.cases_from_list(
       {"testcase_name": "_shape={}_fullmatrices={}".format(
