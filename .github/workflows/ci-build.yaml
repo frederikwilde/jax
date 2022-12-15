@@ -6,15 +6,15 @@ name: CI
 # - 3.9  : Part of Matrix with NumPy dispatch
 # - 3.10 : Part of Matrix
 
-on:
-  # Trigger the workflow on push or pull request,
-  # but only for the main branch
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+# on:
+#   # Trigger the workflow on push or pull request,
+#   # but only for the main branch
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
 
 jobs:
   lint_and_typecheck:
